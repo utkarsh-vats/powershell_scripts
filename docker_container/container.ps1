@@ -1,12 +1,14 @@
 # Usage:
 #   ctnr local up [--build] [-d]
-#   ctnr local down
+#   ctnr local down [-v]
 #   ctnr local logs [--tail=N]
 #   ctnr local restart
+#   ctnr local config
 #   ctnr prod up [--build] [-d]
-#   ctnr prod down
+#   ctnr prod down [-v]
 #   ctnr prod logs [--tail=N]
 #   ctnr prod restart
+#   ctnr prod config
 
 # container local up -> docker compose --env-file .env.local up --build
 # container prod up -> docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
@@ -38,12 +40,14 @@ function ctnr {
         Write-Host "  ctnr <local|prod> down"
         Write-Host "  ctnr <local|prod> logs [--tail=N]"
         Write-Host "  ctnr <local|prod> restart"
+        Write-Host "  ctnr <local|prod> config"
         return
     }
 
     # parse optional flags
     $detached = $flags -contains "-d"
     $build = $flags -contains "--build"
+    $volume = $flags -contains "-v"
     $tailFlag = $flags | Where-Object { $_ -match "^--tail=\d+$" } | Select-Object -First 1
 
     switch ($arg2) {
@@ -56,7 +60,9 @@ function ctnr {
         }
         "down" {
             Write-Host "Tearing down $arg1 Docker environment..." -ForegroundColor Yellow
-            Invoke-Expression "$composeBase down"
+            $cmd = "$composeBase down"
+            if ($volume) { $cmd += " -v" }
+            Invoke-Expression "$cmd"
         }
         "logs" {
             Write-Host "Tailing $arg1 logs (Ctrl+C to stop)..." -ForegroundColor Cyan
@@ -68,12 +74,22 @@ function ctnr {
             Write-Host "Restarting $arg1 Docker environment..." -ForegroundColor Cyan
             Invoke-Expression "$composeBase restart"
         }
+        "config" {
+            Write-Host "Config for $arg1 Docker environment..." -ForegroundColor Cyan
+            Invoke-Expression "$composeBase config"
+        }
         default {
             if ([string]::IsNullOrWhiteSpace($arg2)) {
                 Write-Host "Provide a command. Example: ctnr $arg1 up" -ForegroundColor Yellow
             }
             else {
                 Write-Error "Invalid $arg1 command: $arg2"
+                Write-Host "Try..."
+                Write-Host "  ctnr <local|prod> up [--build] [-d]"
+                Write-Host "  ctnr <local|prod> down"
+                Write-Host "  ctnr <local|prod> logs [--tail=N]"
+                Write-Host "  ctnr <local|prod> restart"
+                Write-Host "  ctnr <local|prod> config"
             }
         }
     }
